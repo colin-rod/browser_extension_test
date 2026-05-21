@@ -1,0 +1,26 @@
+[project]
+name = "sellpy-visual-search"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "modal>=0.64",
+    "fastapi>=0.110",
+    "torch>=2.2",
+    "transformers>=4.40",
+    "pillow>=10.0",
+    "requests>=2.31",
+    "numpy>=1.26",
+    "google-cloud-bigquery>=3.20",
+    "db-dtypes>=1.2",
+    "pyarrow>=14.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: tests that load the FashionCLIP model (skipped by default)",
+]
+addopts = "-m 'not slow'"
+testpaths = ["tests"]
