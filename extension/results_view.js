@@ -4,11 +4,6 @@ export function escapeHtml(s) {
     })[c]);
 }
 
-export function formatPrice(price) {
-    if (price === null || price === undefined) return "";
-    return `${Math.round(price)} kr`;
-}
-
 export function isDebugEnabled(search, stored) {
     const params = new URLSearchParams(search || "");
     if (params.has("debug")) {
@@ -22,9 +17,7 @@ export function renderCard(match, { debug }) {
     const categoryDisplay = match.category || match.category_1 || null;
     const brandText = hasBrand ? match.brand : (categoryDisplay || "Item");
     const showCategoryLine = hasBrand && categoryDisplay;
-    const priceText = formatPrice(match.price);
     const hasSize = match.size && match.size.length > 0;
-    const showPriceRow = priceText.length > 0 || hasSize;
 
     const debugOverlay = debug
         ? `<div class="debug-overlay">similarity ${match.score.toFixed(3)} · <span class="debug-objectid">${escapeHtml(match.objectid)}</span></div>`
@@ -34,11 +27,8 @@ export function renderCard(match, { debug }) {
         ? `<div class="category">${escapeHtml(categoryDisplay)}</div>`
         : "";
 
-    const priceRow = showPriceRow
-        ? `<div class="price-row">
-            ${priceText ? `<span class="price">${escapeHtml(priceText)}</span>` : `<span class="price"></span>`}
-            ${hasSize ? `<span class="size-pill">${escapeHtml(match.size)}</span>` : ""}
-        </div>`
+    const sizeRow = hasSize
+        ? `<div class="size-row"><span class="size-pill">${escapeHtml(match.size)}</span></div>`
         : "";
 
     return `
@@ -50,7 +40,7 @@ export function renderCard(match, { debug }) {
             <div class="meta">
                 <div class="brand">${escapeHtml(brandText)}</div>
                 ${categoryLine}
-                ${priceRow}
+                ${sizeRow}
             </div>
         </a>
     `;

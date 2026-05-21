@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import {
     escapeHtml,
-    formatPrice,
     renderCard,
     renderDebugInfo,
     isDebugEnabled,
@@ -13,20 +12,11 @@ test("escapeHtml escapes HTML special chars", () => {
     assert.equal(escapeHtml("<b>&\"'"), "&lt;b&gt;&amp;&quot;&#39;");
 });
 
-test("formatPrice renders integer SEK", () => {
-    assert.equal(formatPrice(149), "149 kr");
-    assert.equal(formatPrice(149.0), "149 kr");
-});
-
-test("formatPrice returns empty string for null", () => {
-    assert.equal(formatPrice(null), "");
-    assert.equal(formatPrice(undefined), "");
-});
-
-test("renderCard shows brand, category, price, size", () => {
+test("renderCard shows brand, category, size (no price in UI)", () => {
     const html = renderCard({
         objectid: "abc",
-        category_1: "Sweater",
+        category: "Sweaters & Cardigans",
+        category_1: "Clothing",
         image_url: "https://img/1.jpg",
         product_url: "https://www.sellpy.se/item/abc",
         brand: "Acne",
@@ -35,33 +25,36 @@ test("renderCard shows brand, category, price, size", () => {
         score: 0.771,
     }, { debug: false });
     assert.match(html, /Acne/);
-    assert.match(html, /Sweater/);
-    assert.match(html, /149 kr/);
+    assert.match(html, /Sweaters &amp; Cardigans/);
     assert.match(html, />M</);
+    assert.doesNotMatch(html, /149/);
+    assert.doesNotMatch(html, /kr/);
     assert.doesNotMatch(html, /0\.771/);
     assert.doesNotMatch(html, /debug-objectid/);
 });
 
-test("renderCard falls back to category_1 in brand slot when brand missing", () => {
+test("renderCard falls back to category in brand slot when brand missing", () => {
     const html = renderCard({
         objectid: "abc",
-        category_1: "Sweater",
+        category: "Dresses",
+        category_1: "Clothing",
         image_url: "https://img/1.jpg",
         product_url: "https://p",
         brand: null,
         size: "M",
-        price: 149.0,
+        price: null,
         score: 0.5,
     }, { debug: false });
-    assert.match(html, /class="brand">Sweater</);
+    assert.match(html, /class="brand">Dresses</);
     const categoryLineMatches = html.match(/class="category"/g) || [];
     assert.equal(categoryLineMatches.length, 0);
 });
 
-test("renderCard omits price+size row when both null", () => {
+test("renderCard omits size row when size is null", () => {
     const html = renderCard({
         objectid: "abc",
-        category_1: "Sweater",
+        category: "Dresses",
+        category_1: "Clothing",
         image_url: "https://img/1.jpg",
         product_url: "https://p",
         brand: "Acne",
@@ -69,7 +62,24 @@ test("renderCard omits price+size row when both null", () => {
         price: null,
         score: 0.5,
     }, { debug: false });
-    assert.doesNotMatch(html, /class="price-row"/);
+    assert.doesNotMatch(html, /class="size-row"/);
+    assert.doesNotMatch(html, /class="size-pill"/);
+});
+
+test("renderCard prefers match.category over match.category_1 (finer wins)", () => {
+    const html = renderCard({
+        objectid: "abc",
+        category: "Dresses",
+        category_1: "Clothing",
+        image_url: "https://img/1.jpg",
+        product_url: "https://p",
+        brand: "Acne",
+        size: "M",
+        price: null,
+        score: 0.5,
+    }, { debug: false });
+    assert.match(html, /class="category">Dresses</);
+    assert.doesNotMatch(html, />Clothing</);
 });
 
 test("renderCard shows debug overlay when debug=true", () => {

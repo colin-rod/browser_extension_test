@@ -173,18 +173,10 @@ body {
     color: var(--black-400);
 }
 
-.price-row {
+.size-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     margin-top: var(--space-8);
-    gap: var(--space-8);
-}
-.price {
-    font-weight: 500;
-    font-size: 14px;
-    line-height: 18px;
-    color: var(--black-100);
 }
 .size-pill {
     font-weight: 500;
