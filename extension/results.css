@@ -57,6 +57,14 @@ body {
     display: block;
 }
 
+.sellpy-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-card);
+    flex-shrink: 0;
+    display: block;
+}
+
 .page-title {
     font-family: var(--font-heading);
     font-weight: 500;

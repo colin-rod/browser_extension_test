@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Sellpy Visual Search",
+  "name": "Sellpy Lens",
   "version": "0.1.0",
   "description": "Right-click any image to find visually similar items on Sellpy.",
   "permissions": ["contextMenus", "storage"],

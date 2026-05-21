@@ -1,4 +1,4 @@
-# Sellpy Visual Search — MVP
+# Sellpy Lens — MVP
 
 Right-click any image on the web → find visually similar items on Sellpy.
 
