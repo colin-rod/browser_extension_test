@@ -19,7 +19,7 @@ export function isDebugEnabled(search, stored) {
 
 export function renderCard(match, { debug }) {
     const hasBrand = match.brand && match.brand.length > 0;
-    const categoryDisplay = match.category_1 || match.category || null;
+    const categoryDisplay = match.category || match.category_1 || null;
     const brandText = hasBrand ? match.brand : (categoryDisplay || "Item");
     const showCategoryLine = hasBrand && categoryDisplay;
     const priceText = formatPrice(match.price);
