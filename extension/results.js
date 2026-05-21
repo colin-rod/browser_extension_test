@@ -1,5 +1,7 @@
 import { renderCard, renderDebugInfo, renderFilterBar, renderMissingBanner, isDebugEnabled, escapeHtml } from "./results_view.js";
 import { emptyFilterState, deriveFilterOptions, applyFilters } from "./results_filters.js";
+import { pointerBoxToNatural, isValidCrop, cropToBase64 } from "./crop.js";
+import { findSimilar } from "./lookup.js";
 
 const DEBUG_STORAGE_KEY = "sellpy:results:debug";
 
@@ -7,6 +9,12 @@ const params = new URLSearchParams(window.location.search);
 const requestId = params.get("id");
 
 const queryThumbEl = document.getElementById("query-thumb");
+const queryPaneEl = document.getElementById("query-pane");
+const queryImageEl = document.getElementById("query-image");
+const cropOverlayEl = document.getElementById("crop-overlay");
+const cropSearchBtn = document.getElementById("crop-search");
+const cropClearBtn = document.getElementById("crop-clear");
+const cropErrorEl = document.getElementById("crop-error");
 const resultsEl = document.getElementById("results");
 const debugToggleEl = document.getElementById("debug-toggle");
 const debugInfoEl = document.getElementById("debug-info");
@@ -15,8 +23,12 @@ const missingBannerHostEl = document.getElementById("missing-banner-host");
 
 let debugOn = isDebugEnabled(window.location.search, readDebugStored());
 let filterState = emptyFilterState();
-let lastMatches = null;
+let lastMatchSetKey = null;
 let lastOptions = null;
+
+let cropBox = null;
+let dragState = null;
+let refining = false;
 
 applyDebugToggleVisual();
 
@@ -50,6 +62,13 @@ async function render() {
 
     if (data.queryImage) {
         queryThumbEl.innerHTML = `<img src="${escapeHtml(data.queryImage)}" alt="" />`;
+        if (queryImageEl.src !== data.queryImage) {
+            queryImageEl.crossOrigin = "anonymous";
+            queryImageEl.src = data.queryImage;
+        }
+        queryPaneEl.hidden = false;
+    } else {
+        queryPaneEl.hidden = true;
     }
 
     if (data.status === "loading") {
@@ -77,8 +96,9 @@ async function render() {
             return;
         }
 
-        const isNewMatchSet = lastMatches !== null && lastMatches !== data.matches;
-        lastMatches = data.matches;
+        const matchSetKey = matchSetIdentity(data);
+        const isNewMatchSet = lastMatchSetKey !== null && lastMatchSetKey !== matchSetKey;
+        lastMatchSetKey = matchSetKey;
         lastOptions = deriveFilterOptions(data.matches);
         if (isNewMatchSet) {
             filterState = emptyFilterState();
@@ -105,6 +125,13 @@ async function render() {
         renderDebugBar(data, visible.length);
         attachObjectidCopy();
     }
+}
+
+function matchSetIdentity(data) {
+    const ts = data.timestamp ?? "";
+    const len = data.matches?.length ?? 0;
+    const firstId = data.matches?.[0]?.objectid ?? "";
+    return `${ts}|${len}|${firstId}`;
 }
 
 function pruneStateAgainstOptions(state, options) {
@@ -288,3 +315,113 @@ filterBarEl.addEventListener("change", (e) => {
     if (!e.target.classList.contains("price-range-lo") && !e.target.classList.contains("price-range-hi")) return;
     render();
 });
+
+cropOverlayEl.addEventListener("pointerdown", onCropPointerDown);
+cropOverlayEl.addEventListener("pointermove", onCropPointerMove);
+cropOverlayEl.addEventListener("pointerup", onCropPointerUp);
+cropOverlayEl.addEventListener("pointercancel", onCropPointerUp);
+cropSearchBtn.addEventListener("click", onSearchCrop);
+cropClearBtn.addEventListener("click", clearCrop);
+
+function onCropPointerDown(e) {
+    if (refining) return;
+    cropOverlayEl.setPointerCapture(e.pointerId);
+    const rect = cropOverlayEl.getBoundingClientRect();
+    dragState = { startX: e.clientX - rect.left, startY: e.clientY - rect.top };
+    cropBox = null;
+    drawCropOverlay(null);
+    updateCropButtons();
+}
+
+function onCropPointerMove(e) {
+    if (!dragState) return;
+    const rect = cropOverlayEl.getBoundingClientRect();
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
+    cropBox = pointerBoxToNatural(
+        { startX: dragState.startX, startY: dragState.startY, endX, endY },
+        {
+            displayWidth: rect.width,
+            displayHeight: rect.height,
+            naturalWidth: queryImageEl.naturalWidth,
+            naturalHeight: queryImageEl.naturalHeight,
+        },
+    );
+    drawCropOverlay(cropBox);
+    updateCropButtons();
+}
+
+function onCropPointerUp(e) {
+    if (!dragState) return;
+    try { cropOverlayEl.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    dragState = null;
+    updateCropButtons();
+}
+
+function drawCropOverlay(box) {
+    const rect = cropOverlayEl.getBoundingClientRect();
+    cropOverlayEl.width = rect.width;
+    cropOverlayEl.height = rect.height;
+    const ctx = cropOverlayEl.getContext("2d");
+    ctx.clearRect(0, 0, cropOverlayEl.width, cropOverlayEl.height);
+    if (!box) return;
+    const scaleX = rect.width / queryImageEl.naturalWidth;
+    const scaleY = rect.height / queryImageEl.naturalHeight;
+    const dx = box.x * scaleX;
+    const dy = box.y * scaleY;
+    const dw = box.w * scaleX;
+    const dh = box.h * scaleY;
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(0, 0, cropOverlayEl.width, cropOverlayEl.height);
+    ctx.clearRect(dx, dy, dw, dh);
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dx, dy, dw, dh);
+}
+
+function updateCropButtons() {
+    const valid = isValidCrop(cropBox);
+    cropSearchBtn.hidden = !cropBox;
+    cropSearchBtn.disabled = !valid || refining;
+    cropClearBtn.hidden = !cropBox;
+}
+
+function clearCrop() {
+    cropBox = null;
+    dragState = null;
+    drawCropOverlay(null);
+    updateCropButtons();
+    hideCropError();
+}
+
+async function onSearchCrop() {
+    if (!isValidCrop(cropBox) || refining) return;
+    refining = true;
+    hideCropError();
+    cropSearchBtn.disabled = true;
+    resultsEl.classList.add("results-loading");
+    try {
+        const imageBytes = await cropToBase64(queryImageEl, cropBox);
+        const matches = await findSimilar({ imageBytes, topK: 10 });
+        const existing = (await chrome.storage.session.get(requestId))[requestId] || {};
+        await chrome.storage.session.set({
+            [requestId]: { ...existing, status: "ok", matches, timestamp: Date.now() },
+        });
+    } catch (err) {
+        showCropError(String(err && err.message ? err.message : err));
+    } finally {
+        refining = false;
+        resultsEl.classList.remove("results-loading");
+        updateCropButtons();
+    }
+}
+
+function showCropError(msg) {
+    cropErrorEl.textContent = msg;
+    cropErrorEl.hidden = false;
+}
+
+function hideCropError() {
+    cropErrorEl.textContent = "";
+    cropErrorEl.hidden = true;
+}
