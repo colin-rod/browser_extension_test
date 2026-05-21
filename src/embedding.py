@@ -29,6 +29,14 @@ def load_image_from_url(url: str, timeout: float = 10.0) -> Image.Image:
     return Image.open(io.BytesIO(resp.content)).convert("RGB")
 
 
+def load_image_from_bytes(data: bytes) -> Image.Image:
+    """Decode raw image bytes (JPEG/PNG) to an RGB PIL Image."""
+    try:
+        return Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception as e:
+        raise ValueError(f"could not decode image bytes: {e}") from e
+
+
 def embed_images(
     model: CLIPModel,
     processor: CLIPProcessor,
