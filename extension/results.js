@@ -15,7 +15,6 @@ const cropOverlayEl = document.getElementById("crop-overlay");
 const cropSearchBtn = document.getElementById("crop-search");
 const cropClearBtn = document.getElementById("crop-clear");
 const cropErrorEl = document.getElementById("crop-error");
-const refineDoneBtn = document.getElementById("refine-done");
 const resultsEl = document.getElementById("results");
 const debugToggleEl = document.getElementById("debug-toggle");
 const debugInfoEl = document.getElementById("debug-info");
@@ -221,7 +220,8 @@ filterBarEl.addEventListener("click", (e) => {
     const refineBtn = e.target.closest("[data-refine]");
     if (refineBtn && !refineBtn.disabled) {
         e.stopPropagation();
-        refineOpen = true;
+        refineOpen = !refineOpen;
+        if (!refineOpen) clearCrop();
         closePopover();
         render();
         return;
@@ -333,11 +333,6 @@ cropOverlayEl.addEventListener("pointerup", onCropPointerUp);
 cropOverlayEl.addEventListener("pointercancel", onCropPointerUp);
 cropSearchBtn.addEventListener("click", onSearchCrop);
 cropClearBtn.addEventListener("click", clearCrop);
-refineDoneBtn.addEventListener("click", () => {
-    refineOpen = false;
-    clearCrop();
-    render();
-});
 
 function onCropPointerDown(e) {
     if (refining) return;
