@@ -1,4 +1,5 @@
-import { renderCard, renderDebugInfo, isDebugEnabled, escapeHtml } from "./results_view.js";
+import { renderCard, renderDebugInfo, renderFilterBar, renderMissingBanner, isDebugEnabled, escapeHtml } from "./results_view.js";
+import { emptyFilterState, deriveFilterOptions, applyFilters } from "./results_filters.js";
 
 const DEBUG_STORAGE_KEY = "sellpy:results:debug";
 
@@ -9,8 +10,14 @@ const queryThumbEl = document.getElementById("query-thumb");
 const resultsEl = document.getElementById("results");
 const debugToggleEl = document.getElementById("debug-toggle");
 const debugInfoEl = document.getElementById("debug-info");
+const filterBarEl = document.getElementById("filter-bar");
+const missingBannerHostEl = document.getElementById("missing-banner-host");
 
 let debugOn = isDebugEnabled(window.location.search, readDebugStored());
+let filterState = emptyFilterState();
+let lastMatches = null;
+let lastOptions = null;
+
 applyDebugToggleVisual();
 
 debugToggleEl.addEventListener("click", () => {
@@ -36,6 +43,8 @@ async function render() {
     if (!data) {
         resultsEl.innerHTML = `<p class="status">No data.</p>`;
         debugInfoEl.hidden = true;
+        filterBarEl.hidden = true;
+        missingBannerHostEl.innerHTML = "";
         return;
     }
 
@@ -48,27 +57,89 @@ async function render() {
             resultsEl.innerHTML = skeletonGrid();
         }
         debugInfoEl.hidden = true;
+        filterBarEl.hidden = true;
+        missingBannerHostEl.innerHTML = "";
         return;
     }
     if (data.status === "error") {
         resultsEl.innerHTML = `<p class="status">Couldn't find matches. ${escapeHtml(data.error || "Try again.")}</p>`;
         debugInfoEl.hidden = true;
+        filterBarEl.hidden = true;
+        missingBannerHostEl.innerHTML = "";
         return;
     }
     if (data.status === "ok") {
         if (!data.matches || data.matches.length === 0) {
             resultsEl.innerHTML = `<p class="status">No matches.</p>`;
             debugInfoEl.hidden = true;
+            filterBarEl.hidden = true;
+            missingBannerHostEl.innerHTML = "";
             return;
         }
-        const cards = data.matches.map((m) => renderCard(m, { debug: debugOn })).join("");
-        resultsEl.innerHTML = `<div class="grid">${cards}</div>`;
-        renderDebugBar(data);
+
+        const isNewMatchSet = lastMatches !== null && lastMatches !== data.matches;
+        lastMatches = data.matches;
+        lastOptions = deriveFilterOptions(data.matches);
+        if (isNewMatchSet) {
+            filterState = emptyFilterState();
+        } else {
+            pruneStateAgainstOptions(filterState, lastOptions);
+        }
+
+        const { visible, hiddenByMissing } = applyFilters(data.matches, filterState);
+
+        const previouslyOpen = openPopover;
+        filterBarEl.innerHTML = renderFilterBar(filterState, lastOptions);
+        filterBarEl.hidden = false;
+        if (previouslyOpen) {
+            const el = filterBarEl.querySelector(`.filter-popover[data-popover-for="${previouslyOpen}"]`);
+            if (el) {
+                el.hidden = false;
+            } else {
+                openPopover = null;
+            }
+        }
+
+        renderMissingBanners(hiddenByMissing);
+        renderGrid(visible);
+        renderDebugBar(data, visible.length);
         attachObjectidCopy();
     }
 }
 
-function renderDebugBar(data) {
+function pruneStateAgainstOptions(state, options) {
+    const validSizes = new Set(options.sizes.map((o) => o.value));
+    for (const v of [...state.sizes]) if (!validSizes.has(v)) state.sizes.delete(v);
+    const validBrands = new Set(options.brands.map((o) => o.value));
+    for (const v of [...state.brands]) if (!validBrands.has(v)) state.brands.delete(v);
+    if (state.priceRange !== null && options.priceBounds === null) {
+        state.priceRange = null;
+    }
+}
+
+function renderGrid(visible) {
+    if (visible.length === 0) {
+        resultsEl.innerHTML = `
+            <p class="status">No items match these filters.</p>
+            <button type="button" class="filter-clear-all" data-clear-all>Clear filters</button>
+        `;
+        return;
+    }
+    const cards = visible.map((m) => renderCard(m, { debug: debugOn })).join("");
+    resultsEl.innerHTML = `<div class="grid">${cards}</div>`;
+}
+
+function renderMissingBanners(hiddenByMissing) {
+    const parts = [];
+    for (const field of ["size", "brand", "price"]) {
+        if (hiddenByMissing[field] > 0 && !filterState.includeMissing[field]) {
+            parts.push(renderMissingBanner(field, hiddenByMissing[field]));
+        }
+    }
+    missingBannerHostEl.innerHTML = parts.join("");
+}
+
+function renderDebugBar(data, visibleCount) {
     if (!debugOn) {
         debugInfoEl.hidden = true;
         return;
@@ -76,7 +147,7 @@ function renderDebugBar(data) {
     debugInfoEl.innerHTML = renderDebugInfo({
         queryImage: data.queryImage,
         topK: data.topK ?? data.matches?.length ?? null,
-        matchCount: data.matches?.length ?? 0,
+        matchCount: visibleCount,
         timestamp: new Date(data.timestamp || Date.now()).toISOString(),
     });
     debugInfoEl.hidden = false;
@@ -113,3 +184,107 @@ function writeDebugStored(v) {
 function applyDebugToggleVisual() {
     debugToggleEl.classList.toggle("is-active", debugOn);
 }
+
+let openPopover = null;
+
+filterBarEl.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-filter]");
+    if (trigger && !trigger.disabled) {
+        e.stopPropagation();
+        const field = trigger.dataset.filter;
+        togglePopover(field);
+        return;
+    }
+    if (e.target.closest(".filter-popover")) {
+        e.stopPropagation();
+    }
+});
+
+document.addEventListener("click", () => closePopover());
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closePopover();
+});
+
+function togglePopover(field) {
+    if (openPopover === field) {
+        closePopover();
+        return;
+    }
+    closePopover();
+    const el = filterBarEl.querySelector(`.filter-popover[data-popover-for="${field}"]`);
+    if (!el) return;
+    el.hidden = false;
+    openPopover = field;
+}
+
+function closePopover() {
+    if (!openPopover) return;
+    const el = filterBarEl.querySelector(`.filter-popover[data-popover-for="${openPopover}"]`);
+    if (el) el.hidden = true;
+    openPopover = null;
+}
+
+filterBarEl.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.sizeOption !== undefined) {
+        toggleSet(filterState.sizes, el.dataset.sizeOption, el.checked);
+        render();
+        return;
+    }
+    if (el.dataset.brandOption !== undefined) {
+        toggleSet(filterState.brands, el.dataset.brandOption, el.checked);
+        render();
+        return;
+    }
+});
+
+document.body.addEventListener("click", (e) => {
+    if (e.target.matches("[data-clear-all]")) {
+        filterState = emptyFilterState();
+        render();
+        return;
+    }
+});
+
+missingBannerHostEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-show-missing]");
+    if (!btn) return;
+    const field = btn.dataset.showMissing;
+    filterState.includeMissing[field] = true;
+    render();
+});
+
+function toggleSet(set, value, on) {
+    if (on) set.add(value); else set.delete(value);
+}
+
+filterBarEl.addEventListener("input", (e) => {
+    if (!e.target.classList.contains("price-range-lo") && !e.target.classList.contains("price-range-hi")) return;
+    const slider = e.target.closest(".price-slider");
+    if (!slider) return;
+    const min = Number(slider.dataset.priceMin);
+    const max = Number(slider.dataset.priceMax);
+    const loInput = slider.querySelector(".price-range-lo");
+    const hiInput = slider.querySelector(".price-range-hi");
+    let lo = Number(loInput.value);
+    let hi = Number(hiInput.value);
+    if (lo > hi) {
+        if (e.target === loInput) lo = hi; else hi = lo;
+        loInput.value = String(lo);
+        hiInput.value = String(hi);
+    }
+    slider.querySelector(".price-lo").textContent = String(lo);
+    slider.querySelector(".price-hi").textContent = String(hi);
+    slider.dataset.priceCurrentMin = String(lo);
+    slider.dataset.priceCurrentMax = String(hi);
+    if (lo === min && hi === max) {
+        filterState.priceRange = null;
+    } else {
+        filterState.priceRange = [lo, hi];
+    }
+});
+
+filterBarEl.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("price-range-lo") && !e.target.classList.contains("price-range-hi")) return;
+    render();
+});
