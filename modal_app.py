@@ -105,8 +105,60 @@ def embed_catalog(limit: int = 10_000) -> dict:
     }
 
 
-@app.function(memory=2048, volumes={CATALOG_DIR: volume})
-@modal.fastapi_endpoint(method="POST")
-def match(payload: dict) -> dict:
-    """Embed query image, return top-K Sellpy matches."""
-    return {"status": "not_implemented", "echo": payload}
+@app.cls(memory=2048, volumes={CATALOG_DIR: volume}, min_containers=0)
+class MatchService:
+    """Loads catalog + model once per container, serves match requests."""
+
+    @modal.enter()
+    def load(self):
+        import json
+
+        import numpy as np
+        import torch
+
+        from src.embedding import load_model
+
+        print("Loading catalog from Volume...")
+        npz = np.load(f"{CATALOG_DIR}/catalog.npz")
+        self.catalog = torch.from_numpy(npz["embeddings"])
+        with open(f"{CATALOG_DIR}/metadata.json") as f:
+            self.metadata = json.load(f)
+        print(f"  loaded {len(self.metadata)} items, embeddings shape {tuple(self.catalog.shape)}")
+
+        print("Loading FashionCLIP (CPU)...")
+        self.model, self.processor = load_model()
+
+    @modal.fastapi_endpoint(method="POST")
+    def match(self, payload: dict) -> dict:
+        import torch
+        from fastapi import HTTPException
+
+        from src.embedding import embed_images, load_image_from_url
+        from src.similarity import top_k_matches
+        from src.types import Match
+
+        image_url = payload.get("image_url")
+        if not image_url or not isinstance(image_url, str):
+            raise HTTPException(status_code=400, detail="image_url is required")
+        top_k = int(payload.get("top_k", 10))
+
+        try:
+            img = load_image_from_url(image_url, timeout=10)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"could not load image: {e}")
+
+        with torch.no_grad():
+            query_emb = embed_images(self.model, self.processor, [img]).numpy()[0]
+
+        indices, scores = top_k_matches(query_emb, self.catalog.numpy(), k=top_k)
+        matches = [
+            Match(
+                objectid=self.metadata[i]["objectid"],
+                category=self.metadata[i]["category"],
+                image_url=self.metadata[i]["image_url"],
+                product_url=self.metadata[i]["product_url"],
+                score=float(s),
+            ).to_json()
+            for i, s in zip(indices, scores)
+        ]
+        return {"matches": matches}
