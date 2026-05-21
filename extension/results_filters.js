@@ -18,6 +18,45 @@ export function deriveFilterOptions(matches) {
     };
 }
 
+export function applyFilters(matches, state) {
+    const hiddenByMissing = { size: 0, brand: 0, price: 0 };
+    const visible = [];
+    for (const item of matches) {
+        if (!passes(item, state, hiddenByMissing)) continue;
+        visible.push(item);
+    }
+    return { visible, hiddenByMissing };
+}
+
+function passes(item, state, hiddenByMissing) {
+    if (!passesField(item.size, state.sizes, state.includeMissing.size, "size", hiddenByMissing)) return false;
+    if (!passesField(item.brand, state.brands, state.includeMissing.brand, "brand", hiddenByMissing)) return false;
+    if (!passesPrice(item.price, state.priceRange, state.includeMissing.price, hiddenByMissing)) return false;
+    return true;
+}
+
+function passesField(value, selectedSet, includeMissing, fieldName, hiddenByMissing) {
+    if (selectedSet.size === 0) return true;
+    const isMissing = value == null || value === "";
+    if (isMissing) {
+        if (includeMissing) return true;
+        hiddenByMissing[fieldName] += 1;
+        return false;
+    }
+    return selectedSet.has(value);
+}
+
+function passesPrice(price, range, includeMissing, hiddenByMissing) {
+    if (range === null) return true;
+    const isMissing = typeof price !== "number" || !Number.isFinite(price);
+    if (isMissing) {
+        if (includeMissing) return true;
+        hiddenByMissing.price += 1;
+        return false;
+    }
+    return price >= range[0] && price <= range[1];
+}
+
 function derivePriceBounds(matches) {
     const prices = matches
         .map((m) => m.price)

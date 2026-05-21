@@ -90,3 +90,48 @@ test("deriveFilterOptions price bounds equal when all items same price", () => {
     const opts = deriveFilterOptions(matches);
     assert.deepEqual(opts.priceBounds, [100, 100]);
 });
+
+import { applyFilters } from "../extension/results_filters.js";
+
+const ITEMS = [
+    { id: 1, size: "M", brand: "Acne", price: 100 },
+    { id: 2, size: "L", brand: "Zara", price: 200 },
+    { id: 3, size: "M", brand: "Zara", price: 300 },
+    { id: 4, size: "S", brand: "Acne", price: 400 },
+];
+
+test("applyFilters with empty state returns all items as visible", () => {
+    const state = emptyFilterState();
+    const r = applyFilters(ITEMS, state);
+    assert.equal(r.visible.length, 4);
+    assert.deepEqual(r.hiddenByMissing, { size: 0, brand: 0, price: 0 });
+});
+
+test("applyFilters narrows by single size value", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    const r = applyFilters(ITEMS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 3]);
+});
+
+test("applyFilters narrows by single brand value", () => {
+    const state = emptyFilterState();
+    state.brands.add("Acne");
+    const r = applyFilters(ITEMS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 4]);
+});
+
+test("applyFilters narrows by price range (inclusive on both ends)", () => {
+    const state = emptyFilterState();
+    state.priceRange = [200, 300];
+    const r = applyFilters(ITEMS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [2, 3]);
+});
+
+test("applyFilters OR within same field", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    state.sizes.add("L");
+    const r = applyFilters(ITEMS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 2, 3]);
+});
