@@ -38,7 +38,7 @@ export function renderCard(match, { debug }) {
                 ${debugOverlay}
             </div>
             <div class="meta">
-                <div class="brand">${escapeHtml(brandText)}</div>
+                <div class="brand"><span class="brand-text">${escapeHtml(brandText)}</span><span class="card-open-icon" aria-hidden="true"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5h-2v7h7v-2"/><path d="M7 2.5h2.5V5"/><path d="M5.5 6.5l4-4"/></svg></span></div>
                 ${categoryLine}
                 ${sizeRow}
             </div>
