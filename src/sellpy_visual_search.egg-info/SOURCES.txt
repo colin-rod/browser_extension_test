@@ -1,0 +1,12 @@
+pyproject.toml
+src/__init__.py
+src/catalog_query.py
+src/embedding.py
+src/similarity.py
+src/types.py
+src/sellpy_visual_search.egg-info/PKG-INFO
+src/sellpy_visual_search.egg-info/SOURCES.txt
+src/sellpy_visual_search.egg-info/dependency_links.txt
+src/sellpy_visual_search.egg-info/requires.txt
+src/sellpy_visual_search.egg-info/top_level.txt
+tests/test_similarity.py

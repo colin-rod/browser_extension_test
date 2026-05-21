@@ -1,0 +1,13 @@
+modal>=0.64
+fastapi>=0.110
+torch>=2.2
+transformers>=4.40
+pillow>=10.0
+requests>=2.31
+numpy>=1.26
+google-cloud-bigquery>=3.20
+db-dtypes>=1.2
+pyarrow>=14.0
+
+[dev]
+pytest>=8.0
