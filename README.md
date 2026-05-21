@@ -4,21 +4,23 @@ Right-click any image on the web → find visually similar items on Sellpy.
 
 ## How to install (testers)
 
-### Chrome
-1. Download or clone this repo.
-2. Open `chrome://extensions`.
-3. Toggle **Developer mode** on (top right).
-4. Click **Load unpacked** and select the `extension/` folder.
-5. Right-click any image on the web → "Find on Sellpy".
+Grab the latest `sellpy-lens-vX.Y.Z.zip` from the
+[Releases page](https://github.com/colin-rod/browser_extension_test/releases/latest)
+and unzip it somewhere you won't accidentally delete.
+
+### Chrome / Edge / Brave
+1. Open `chrome://extensions`.
+2. Toggle **Developer mode** on (top right).
+3. Click **Load unpacked** and select the unzipped folder.
+4. Right-click any image on the web → "Find on Sellpy".
 
 ### Firefox
-1. Download or clone this repo.
-2. Open `about:debugging#/runtime/this-firefox`.
-3. Click **Load Temporary Add-on...**.
-4. Select `extension/manifest.json`.
-5. Right-click any image on the web → "Find on Sellpy".
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**.
+3. Select the `manifest.json` inside the unzipped folder.
+4. Right-click any image on the web → "Find on Sellpy".
 
-**Note:** Firefox temporary add-ons unload when Firefox closes. Re-load on each restart.
+**Note:** Firefox temporary add-ons unload when Firefox closes. Re-load on each restart. A signed `.xpi` is coming once we submit to Mozilla.
 
 ## How it works
 
@@ -33,4 +35,7 @@ The extension sends the image URL to a Modal-hosted Python endpoint, which embed
 
 ## Development
 
+Clone the repo and Load unpacked from the `extension/` directory directly to iterate.
 See `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design and implementation plan.
+See [docs/RELEASE.md](docs/RELEASE.md) for the release checklist.
+Privacy policy: [PRIVACY.md](PRIVACY.md).
