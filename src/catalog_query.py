@@ -15,11 +15,7 @@ SELECT
     demography,
     size,
     CAST(last_price_sek AS FLOAT64) AS price
-FROM `dw_tables.aggregated_item`
-WHERE itemstatus = 'utlagd'
-  AND category_lvl_0 = 'Clothing'
-  AND first_photo IS NOT NULL
-  AND first_photo != ''
+FROM `analytics-309907.dw_newbusiness.visual_search_catalog`
 ORDER BY createdat DESC
 LIMIT @limit
 """
