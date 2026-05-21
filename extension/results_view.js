@@ -19,8 +19,9 @@ export function isDebugEnabled(search, stored) {
 
 export function renderCard(match, { debug }) {
     const hasBrand = match.brand && match.brand.length > 0;
-    const brandText = hasBrand ? match.brand : (match.category_1 || "Item");
-    const showCategoryLine = hasBrand && match.category_1;
+    const categoryDisplay = match.category_1 || match.category || null;
+    const brandText = hasBrand ? match.brand : (categoryDisplay || "Item");
+    const showCategoryLine = hasBrand && categoryDisplay;
     const priceText = formatPrice(match.price);
     const hasSize = match.size && match.size.length > 0;
     const showPriceRow = priceText.length > 0 || hasSize;
@@ -30,7 +31,7 @@ export function renderCard(match, { debug }) {
         : "";
 
     const categoryLine = showCategoryLine
-        ? `<div class="category">${escapeHtml(match.category_1)}</div>`
+        ? `<div class="category">${escapeHtml(categoryDisplay)}</div>`
         : "";
 
     const priceRow = showPriceRow

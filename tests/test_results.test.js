@@ -5,6 +5,7 @@ import {
     escapeHtml,
     formatPrice,
     renderCard,
+    renderDebugInfo,
     isDebugEnabled,
 } from "../extension/results_view.js";
 
@@ -84,6 +85,20 @@ test("renderCard shows debug overlay when debug=true", () => {
     }, { debug: true });
     assert.match(html, /similarity 0\.\d{3}/);
     assert.match(html, /abc-123/);
+});
+
+test("renderDebugInfo formats the info bar", () => {
+    const html = renderDebugInfo({
+        queryImage: "https://example.com/very/long/url/to/image.jpg",
+        topK: 10,
+        matchCount: 8,
+        timestamp: "2026-05-21T10:00:00.000Z",
+    });
+    assert.match(html, /query/i);
+    assert.match(html, /top_k/);
+    assert.match(html, /10/);
+    assert.match(html, /matches/i);
+    assert.match(html, /8/);
 });
 
 test("isDebugEnabled honors URL param ?debug=1", () => {
