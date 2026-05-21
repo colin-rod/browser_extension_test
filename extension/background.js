@@ -26,7 +26,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     });
 
     try {
-        const matches = await findSimilar(info.srcUrl, 10);
+        const matches = await findSimilar({ imageUrl: info.srcUrl, topK: 10 });
         await chrome.storage.session.set({
             [requestId]: { status: "ok", queryImage: info.srcUrl, matches },
         });
