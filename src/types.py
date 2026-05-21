@@ -25,6 +25,7 @@ class CatalogItem:
 class Match:
     """One similarity result, returned to the extension."""
     objectid: str
+    category: str | None
     category_1: str | None
     image_url: str
     product_url: str

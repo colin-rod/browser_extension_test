@@ -154,6 +154,7 @@ class MatchService:
         matches = [
             Match(
                 objectid=self.metadata[i]["objectid"],
+                category=self.metadata[i].get("category"),
                 category_1=self.metadata[i].get("category1"),
                 image_url=self.metadata[i]["image_url"],
                 product_url=self.metadata[i]["product_url"],

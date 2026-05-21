@@ -6,6 +6,7 @@ from src.types import Match
 def test_match_to_json_includes_all_fields():
     m = Match(
         objectid="abc",
+        category="Clothing",
         category_1="Sweater",
         image_url="https://img/1.jpg",
         product_url="https://www.sellpy.se/item/abc",
@@ -17,6 +18,7 @@ def test_match_to_json_includes_all_fields():
     j = m.to_json()
     assert j == {
         "objectid": "abc",
+        "category": "Clothing",
         "category_1": "Sweater",
         "image_url": "https://img/1.jpg",
         "product_url": "https://www.sellpy.se/item/abc",
@@ -30,6 +32,7 @@ def test_match_to_json_includes_all_fields():
 def test_match_to_json_allows_null_brand_size_price():
     m = Match(
         objectid="abc",
+        category="Clothing",
         category_1="Sweater",
         image_url="https://img/1.jpg",
         product_url="https://www.sellpy.se/item/abc",
@@ -47,6 +50,7 @@ def test_match_to_json_allows_null_brand_size_price():
 def test_match_to_json_allows_null_category_1():
     m = Match(
         objectid="abc",
+        category="Clothing",
         category_1=None,
         image_url="https://img/1.jpg",
         product_url="https://www.sellpy.se/item/abc",
@@ -56,6 +60,7 @@ def test_match_to_json_allows_null_category_1():
         score=0.5,
     )
     assert m.to_json()["category_1"] is None
+    assert m.to_json()["category"] == "Clothing"
 
 
 def test_match_construction_from_metadata_dict():
@@ -73,6 +78,7 @@ def test_match_construction_from_metadata_dict():
     }
     m = Match(
         objectid=metadata["objectid"],
+        category=metadata.get("category"),
         category_1=metadata.get("category1"),
         image_url=metadata["image_url"],
         product_url=metadata["product_url"],
@@ -83,6 +89,7 @@ def test_match_construction_from_metadata_dict():
     )
     j = m.to_json()
     assert j["brand"] == "Acne"
+    assert j["category"] == "Clothing"
     assert j["category_1"] == "Sweater"
     assert j["size"] == "M"
     assert j["price"] == 149.0
