@@ -6,12 +6,21 @@
     <link rel="stylesheet" href="results.css" />
 </head>
 <body>
-    <header>
-        <h1>Visually similar on Sellpy</h1>
-        <div id="query"></div>
+    <header class="page-header">
+        <div id="query-thumb" class="query-thumb" aria-hidden="true"></div>
+        <h1 class="page-title">Shop this sustainable on Sellpy</h1>
+        <button id="debug-toggle" class="debug-toggle" type="button" aria-label="Toggle debug info" title="Toggle debug info">···</button>
     </header>
+    <div id="debug-info" class="debug-info" hidden></div>
     <main id="results">
-        <p class="status">Loading...</p>
+        <div class="grid skeleton-grid" id="skeleton">
+            <div class="card skeleton-card"></div>
+            <div class="card skeleton-card"></div>
+            <div class="card skeleton-card"></div>
+            <div class="card skeleton-card"></div>
+            <div class="card skeleton-card"></div>
+            <div class="card skeleton-card"></div>
+        </div>
     </main>
     <script src="results.js" type="module"></script>
 </body>
