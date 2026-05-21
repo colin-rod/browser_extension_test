@@ -25,9 +25,12 @@ class CatalogItem:
 class Match:
     """One similarity result, returned to the extension."""
     objectid: str
-    category: str
+    category_1: str | None
     image_url: str
     product_url: str
+    brand: str | None
+    size: str | None
+    price: float | None
     score: float
 
     def to_json(self) -> dict[str, Any]:
