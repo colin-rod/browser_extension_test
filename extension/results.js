@@ -15,6 +15,7 @@ const cropOverlayEl = document.getElementById("crop-overlay");
 const cropSearchBtn = document.getElementById("crop-search");
 const cropClearBtn = document.getElementById("crop-clear");
 const cropErrorEl = document.getElementById("crop-error");
+const refineDoneBtn = document.getElementById("refine-done");
 const resultsEl = document.getElementById("results");
 const debugToggleEl = document.getElementById("debug-toggle");
 const debugInfoEl = document.getElementById("debug-info");
@@ -29,6 +30,7 @@ let lastOptions = null;
 let cropBox = null;
 let dragState = null;
 let refining = false;
+let refineOpen = false;
 
 applyDebugToggleVisual();
 
@@ -66,10 +68,11 @@ async function render() {
             queryImageEl.crossOrigin = "anonymous";
             queryImageEl.src = data.queryImage;
         }
-        queryPaneEl.hidden = false;
     } else {
-        queryPaneEl.hidden = true;
+        queryThumbEl.innerHTML = "";
+        refineOpen = false;
     }
+    queryPaneEl.hidden = !refineOpen;
 
     if (data.status === "loading") {
         if (!resultsEl.querySelector(".skeleton-grid")) {
@@ -109,7 +112,7 @@ async function render() {
         const { visible, hiddenByMissing } = applyFilters(data.matches, filterState);
 
         const previouslyOpen = openPopover;
-        filterBarEl.innerHTML = renderFilterBar(filterState, lastOptions);
+        filterBarEl.innerHTML = renderFilterBar(filterState, lastOptions, { hasQueryImage: !!data.queryImage, refineOpen });
         filterBarEl.hidden = false;
         if (previouslyOpen) {
             const el = filterBarEl.querySelector(`.filter-popover[data-popover-for="${previouslyOpen}"]`);
@@ -215,6 +218,14 @@ function applyDebugToggleVisual() {
 let openPopover = null;
 
 filterBarEl.addEventListener("click", (e) => {
+    const refineBtn = e.target.closest("[data-refine]");
+    if (refineBtn && !refineBtn.disabled) {
+        e.stopPropagation();
+        refineOpen = true;
+        closePopover();
+        render();
+        return;
+    }
     const trigger = e.target.closest("[data-filter]");
     if (trigger && !trigger.disabled) {
         e.stopPropagation();
@@ -322,6 +333,11 @@ cropOverlayEl.addEventListener("pointerup", onCropPointerUp);
 cropOverlayEl.addEventListener("pointercancel", onCropPointerUp);
 cropSearchBtn.addEventListener("click", onSearchCrop);
 cropClearBtn.addEventListener("click", clearCrop);
+refineDoneBtn.addEventListener("click", () => {
+    refineOpen = false;
+    clearCrop();
+    render();
+});
 
 function onCropPointerDown(e) {
     if (refining) return;

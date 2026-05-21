@@ -414,13 +414,18 @@ body {
 }
 
 .crop-search,
-.crop-clear {
+.crop-clear,
+.refine-done {
     font: inherit;
     padding: 6px 12px;
     border-radius: 4px;
     border: 1px solid #ccc;
     background: #fff;
     cursor: pointer;
+}
+
+.refine-done {
+    margin-left: auto;
 }
 
 .crop-search {

@@ -13,6 +13,7 @@
         <button id="debug-toggle" class="debug-toggle" type="button" aria-label="Toggle debug info" title="Toggle debug info">···</button>
     </header>
     <div id="debug-info" class="debug-info" hidden></div>
+    <div id="filter-bar" class="filter-bar" hidden></div>
     <section id="query-pane" class="query-pane" hidden>
         <div class="query-stage">
             <img id="query-image" class="query-image" alt="" />
@@ -21,10 +22,10 @@
         <div class="query-actions">
             <button id="crop-search" class="crop-search" type="button" hidden>Search this area</button>
             <button id="crop-clear" class="crop-clear" type="button" hidden>Clear</button>
+            <button id="refine-done" class="refine-done" type="button">Done</button>
             <span id="crop-error" class="crop-error" hidden></span>
         </div>
     </section>
-    <div id="filter-bar" class="filter-bar" hidden></div>
     <div id="missing-banner-host" class="missing-banner-host"></div>
     <main id="results">
         <div class="grid skeleton-grid" id="skeleton">

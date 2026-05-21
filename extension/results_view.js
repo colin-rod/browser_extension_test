@@ -48,11 +48,13 @@ export function renderCard(match, { debug }) {
 
 const FIELD_LABEL = { size: "Size", brand: "Brand", price: "Price" };
 
-export function renderFilterBar(state, options) {
+export function renderFilterBar(state, options, { hasQueryImage = false, refineOpen = false } = {}) {
     const sizeActive = state.sizes.size > 0;
     const brandActive = state.brands.size > 0;
     const priceActive = state.priceRange !== null;
     const anyActive = sizeActive || brandActive || priceActive;
+
+    const refineTrigger = `<button type="button" data-refine class="filter-trigger refine-trigger${refineOpen ? " is-active" : ""}"${hasQueryImage ? "" : " disabled"}>Refine search</button>`;
 
     const sizeTrigger = renderTrigger({
         field: "size",
@@ -83,6 +85,7 @@ export function renderFilterBar(state, options) {
 
     return `
         <div class="filter-bar-inner">
+            <div class="filter-control" data-control="refine">${refineTrigger}</div>
             <div class="filter-control" data-control="size">${sizeTrigger}${sizePopover}</div>
             <div class="filter-control" data-control="brand">${brandTrigger}${brandPopover}</div>
             <div class="filter-control" data-control="price">${priceTrigger}${pricePopover}</div>
