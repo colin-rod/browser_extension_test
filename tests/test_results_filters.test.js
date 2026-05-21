@@ -135,3 +135,58 @@ test("applyFilters OR within same field", () => {
     const r = applyFilters(ITEMS, state);
     assert.deepEqual(r.visible.map((i) => i.id), [1, 2, 3]);
 });
+
+const ITEMS_WITH_GAPS = [
+    { id: 1, size: "M", brand: "Acne", price: 100 },
+    { id: 2, size: null, brand: "Zara", price: 200 },
+    { id: 3, size: "M", brand: null, price: null },
+    { id: 4, size: "", brand: "Acne", price: 400 },
+];
+
+test("applyFilters hides items missing the filtered field by default", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    const r = applyFilters(ITEMS_WITH_GAPS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 3]);
+    assert.equal(r.hiddenByMissing.size, 2);
+});
+
+test("applyFilters includes missing items when includeMissing[field] is true", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    state.includeMissing.size = true;
+    const r = applyFilters(ITEMS_WITH_GAPS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 2, 3, 4]);
+    assert.equal(r.hiddenByMissing.size, 0);
+});
+
+test("applyFilters hides items with missing price under a price filter", () => {
+    const state = emptyFilterState();
+    state.priceRange = [50, 500];
+    const r = applyFilters(ITEMS_WITH_GAPS, state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1, 2, 4]);
+    assert.equal(r.hiddenByMissing.price, 1);
+});
+
+test("applyFilters combines size AND brand AND price (AND across types, OR within)", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    state.sizes.add("L");
+    state.brands.add("Acne");
+    state.priceRange = [50, 200];
+    const r = applyFilters([
+        { id: 1, size: "M", brand: "Acne", price: 100 },
+        { id: 2, size: "L", brand: "Acne", price: 300 },
+        { id: 3, size: "M", brand: "Zara", price: 150 },
+        { id: 4, size: "S", brand: "Acne", price: 100 },
+    ], state);
+    assert.deepEqual(r.visible.map((i) => i.id), [1]);
+});
+
+test("applyFilters on empty matches returns empty visible and zero missing counts", () => {
+    const state = emptyFilterState();
+    state.sizes.add("M");
+    const r = applyFilters([], state);
+    assert.deepEqual(r.visible, []);
+    assert.deepEqual(r.hiddenByMissing, { size: 0, brand: 0, price: 0 });
+});
