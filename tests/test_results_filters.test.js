@@ -31,3 +31,40 @@ test("deriveFilterOptions on empty array returns empty options and null bounds",
     assert.deepEqual(opts.brands, []);
     assert.equal(opts.priceBounds, null);
 });
+
+test("deriveFilterOptions extracts unique sizes with counts", () => {
+    const matches = [
+        { size: "M" }, { size: "M" }, { size: "L" }, { size: "S" }, { size: "L" }, { size: "L" },
+    ];
+    const opts = deriveFilterOptions(matches);
+    assert.deepEqual(opts.sizes, [
+        { value: "L", count: 3 },
+        { value: "M", count: 2 },
+        { value: "S", count: 1 },
+    ]);
+});
+
+test("deriveFilterOptions sorts by frequency desc, then alpha asc on ties", () => {
+    const matches = [
+        { brand: "Zara" }, { brand: "Acne" }, { brand: "Zara" }, { brand: "Acne" }, { brand: "H&M" },
+    ];
+    const opts = deriveFilterOptions(matches);
+    assert.deepEqual(opts.brands, [
+        { value: "Acne", count: 2 },
+        { value: "Zara", count: 2 },
+        { value: "H&M", count: 1 },
+    ]);
+});
+
+test("deriveFilterOptions ignores null/empty/undefined size and brand values", () => {
+    const matches = [
+        { size: "M", brand: "Acne" },
+        { size: null, brand: "" },
+        { size: "", brand: null },
+        { size: undefined, brand: undefined },
+        { size: "M", brand: "Acne" },
+    ];
+    const opts = deriveFilterOptions(matches);
+    assert.deepEqual(opts.sizes, [{ value: "M", count: 2 }]);
+    assert.deepEqual(opts.brands, [{ value: "Acne", count: 2 }]);
+});
