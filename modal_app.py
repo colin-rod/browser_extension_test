@@ -105,7 +105,7 @@ def embed_catalog(limit: int = 10_000) -> dict:
     }
 
 
-@app.cls(memory=2048, volumes={CATALOG_DIR: volume}, min_containers=0)
+@app.cls(memory=2048, volumes={CATALOG_DIR: volume}, min_containers=1)
 class MatchService:
     """Loads catalog + model once per container, serves match requests."""
 
@@ -154,9 +154,12 @@ class MatchService:
         matches = [
             Match(
                 objectid=self.metadata[i]["objectid"],
-                category=self.metadata[i]["category"],
+                category_1=self.metadata[i].get("category1"),
                 image_url=self.metadata[i]["image_url"],
                 product_url=self.metadata[i]["product_url"],
+                brand=self.metadata[i].get("brand"),
+                size=self.metadata[i].get("size"),
+                price=self.metadata[i].get("price"),
                 score=float(s),
             ).to_json()
             for i, s in zip(indices, scores)

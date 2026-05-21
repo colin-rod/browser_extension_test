@@ -56,3 +56,33 @@ def test_match_to_json_allows_null_category_1():
         score=0.5,
     )
     assert m.to_json()["category_1"] is None
+
+
+def test_match_construction_from_metadata_dict():
+    """Mirrors what modal_app.py does when building a Match from on-Volume metadata."""
+    metadata = {
+        "objectid": "xyz",
+        "image_url": "https://img/xyz.jpg",
+        "product_url": "https://www.sellpy.se/item/xyz",
+        "category": "Clothing",
+        "category1": "Sweater",
+        "brand": "Acne",
+        "demography": "women",
+        "size": "M",
+        "price": 149.0,
+    }
+    m = Match(
+        objectid=metadata["objectid"],
+        category_1=metadata.get("category1"),
+        image_url=metadata["image_url"],
+        product_url=metadata["product_url"],
+        brand=metadata.get("brand"),
+        size=metadata.get("size"),
+        price=metadata.get("price"),
+        score=0.771,
+    )
+    j = m.to_json()
+    assert j["brand"] == "Acne"
+    assert j["category_1"] == "Sweater"
+    assert j["size"] == "M"
+    assert j["price"] == 149.0
