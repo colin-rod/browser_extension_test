@@ -118,3 +118,84 @@ test("isDebugEnabled honors URL param ?debug=1", () => {
     assert.equal(isDebugEnabled("", null), false);
     assert.equal(isDebugEnabled("", "0"), false);
 });
+
+import { renderFilterBar, renderMissingBanner } from "../extension/results_view.js";
+
+const SAMPLE_OPTIONS = {
+    sizes: [{ value: "M", count: 3 }, { value: "L", count: 2 }],
+    brands: [{ value: "Acne", count: 4 }, { value: "Zara", count: 1 }],
+    priceBounds: [100, 500],
+};
+
+function freshState() {
+    return {
+        sizes: new Set(),
+        brands: new Set(),
+        priceRange: null,
+        includeMissing: { size: false, brand: false, price: false },
+    };
+}
+
+test("renderFilterBar renders three triggers with labels", () => {
+    const html = renderFilterBar(freshState(), SAMPLE_OPTIONS);
+    assert.match(html, /data-filter="size"/);
+    assert.match(html, /data-filter="brand"/);
+    assert.match(html, /data-filter="price"/);
+});
+
+test("renderFilterBar shows active count badge when filter is active", () => {
+    const state = freshState();
+    state.sizes.add("M");
+    state.sizes.add("L");
+    const html = renderFilterBar(state, SAMPLE_OPTIONS);
+    assert.match(html, /data-filter="size"[^>]*class="[^"]*is-active/);
+    assert.match(html, /Size · 2/);
+});
+
+test("renderFilterBar shows clear-all only when at least one filter active", () => {
+    const inactive = renderFilterBar(freshState(), SAMPLE_OPTIONS);
+    assert.doesNotMatch(inactive, /data-clear-all/);
+    const active = freshState();
+    active.brands.add("Acne");
+    const activeHtml = renderFilterBar(active, SAMPLE_OPTIONS);
+    assert.match(activeHtml, /data-clear-all/);
+});
+
+test("renderFilterBar disables a trigger whose option list is empty", () => {
+    const opts = { sizes: [], brands: [{ value: "Acne", count: 1 }], priceBounds: null };
+    const html = renderFilterBar(freshState(), opts);
+    assert.match(html, /data-filter="size"[^>]*disabled/);
+    assert.match(html, /data-filter="price"[^>]*disabled/);
+    assert.doesNotMatch(html, /data-filter="brand"[^>]*disabled/);
+});
+
+test("renderFilterBar size popover lists options with counts and reflects checked state", () => {
+    const state = freshState();
+    state.sizes.add("M");
+    const html = renderFilterBar(state, SAMPLE_OPTIONS);
+    assert.match(html, /data-size-option="M"[^>]*checked/);
+    assert.match(html, /data-size-option="L"/);
+    assert.doesNotMatch(html, /data-size-option="L"[^>]*checked/);
+    assert.match(html, />M<\/span>\s*<span[^>]*>3</);
+});
+
+test("renderFilterBar price popover renders slider with bounds and current range", () => {
+    const state = freshState();
+    state.priceRange = [150, 400];
+    const html = renderFilterBar(state, SAMPLE_OPTIONS);
+    assert.match(html, /data-price-min="100"/);
+    assert.match(html, /data-price-max="500"/);
+    assert.match(html, /data-price-current-min="150"/);
+    assert.match(html, /data-price-current-max="400"/);
+});
+
+test("renderMissingBanner renders count, field, and show-anyway link", () => {
+    const html = renderMissingBanner("size", 3);
+    assert.match(html, /3 items hidden/);
+    assert.match(html, /missing size/i);
+    assert.match(html, /data-show-missing="size"/);
+});
+
+test("renderMissingBanner returns empty string for zero count", () => {
+    assert.equal(renderMissingBanner("size", 0), "");
+});

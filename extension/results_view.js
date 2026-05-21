@@ -46,6 +46,105 @@ export function renderCard(match, { debug }) {
     `;
 }
 
+const FIELD_LABEL = { size: "Size", brand: "Brand", price: "Price" };
+
+export function renderFilterBar(state, options) {
+    const sizeActive = state.sizes.size > 0;
+    const brandActive = state.brands.size > 0;
+    const priceActive = state.priceRange !== null;
+    const anyActive = sizeActive || brandActive || priceActive;
+
+    const sizeTrigger = renderTrigger({
+        field: "size",
+        active: sizeActive,
+        count: state.sizes.size,
+        disabled: options.sizes.length === 0,
+    });
+    const brandTrigger = renderTrigger({
+        field: "brand",
+        active: brandActive,
+        count: state.brands.size,
+        disabled: options.brands.length === 0,
+    });
+    const priceTrigger = renderTrigger({
+        field: "price",
+        active: priceActive,
+        count: priceActive ? 1 : 0,
+        disabled: options.priceBounds === null,
+    });
+
+    const sizePopover = renderCheckboxPopover("size", options.sizes, state.sizes);
+    const brandPopover = renderCheckboxPopover("brand", options.brands, state.brands);
+    const pricePopover = renderPricePopover(options.priceBounds, state.priceRange);
+
+    const clearAll = anyActive
+        ? `<button class="filter-clear-all" data-clear-all type="button">Clear all</button>`
+        : "";
+
+    return `
+        <div class="filter-bar-inner">
+            <div class="filter-control" data-control="size">${sizeTrigger}${sizePopover}</div>
+            <div class="filter-control" data-control="brand">${brandTrigger}${brandPopover}</div>
+            <div class="filter-control" data-control="price">${priceTrigger}${pricePopover}</div>
+            ${clearAll}
+        </div>
+    `;
+}
+
+function renderTrigger({ field, active, count, disabled }) {
+    const label = FIELD_LABEL[field];
+    const cls = ["filter-trigger"];
+    if (active) cls.push("is-active");
+    const badge = active && count > 0 && field !== "price" ? ` · ${count}` : (active && field === "price" ? " · ✓" : "");
+    const disabledAttr = disabled ? "disabled" : "";
+    return `<button type="button" data-filter="${field}" class="${cls.join(" ")}" ${disabledAttr}>${escapeHtml(label)}${escapeHtml(badge)}</button>`;
+}
+
+function renderCheckboxPopover(field, options, selectedSet) {
+    if (options.length === 0) return "";
+    const items = options.map((o) => {
+        const checked = selectedSet.has(o.value) ? "checked" : "";
+        return `
+            <label class="filter-option">
+                <input type="checkbox" data-${field}-option="${escapeHtml(o.value)}" ${checked} />
+                <span>${escapeHtml(o.value)}</span>
+                <span class="filter-option-count">${o.count}</span>
+            </label>
+        `;
+    }).join("");
+    return `<div class="filter-popover" data-popover-for="${field}" hidden>${items}</div>`;
+}
+
+function renderPricePopover(bounds, range) {
+    if (bounds === null) return "";
+    const [lo, hi] = bounds;
+    const [curLo, curHi] = range || [lo, hi];
+    return `
+        <div class="filter-popover" data-popover-for="price" hidden>
+            <div class="price-slider"
+                 data-price-min="${lo}"
+                 data-price-max="${hi}"
+                 data-price-current-min="${curLo}"
+                 data-price-current-max="${curHi}">
+                <input type="range" class="price-range-lo" min="${lo}" max="${hi}" value="${curLo}" />
+                <input type="range" class="price-range-hi" min="${lo}" max="${hi}" value="${curHi}" />
+                <div class="price-readout"><span class="price-lo">${curLo}</span> – <span class="price-hi">${curHi}</span> kr</div>
+            </div>
+        </div>
+    `;
+}
+
+export function renderMissingBanner(field, count) {
+    if (!count || count <= 0) return "";
+    const label = FIELD_LABEL[field].toLowerCase();
+    return `
+        <div class="missing-banner" data-missing-banner="${field}">
+            ${count} items hidden (missing ${escapeHtml(label)})
+            <button type="button" class="missing-show-anyway" data-show-missing="${field}">show anyway</button>
+        </div>
+    `;
+}
+
 export function renderDebugInfo({ queryImage, topK, matchCount, timestamp }) {
     return `
         <dt>query</dt><dd class="url" title="${escapeHtml(queryImage || "")}" data-url="${escapeHtml(queryImage || "")}">${escapeHtml(queryImage || "—")}</dd>
