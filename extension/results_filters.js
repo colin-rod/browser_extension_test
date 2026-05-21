@@ -14,8 +14,16 @@ export function deriveFilterOptions(matches) {
     return {
         sizes: countAndSort(matches, "size"),
         brands: countAndSort(matches, "brand"),
-        priceBounds: null,
+        priceBounds: derivePriceBounds(matches),
     };
+}
+
+function derivePriceBounds(matches) {
+    const prices = matches
+        .map((m) => m.price)
+        .filter((p) => typeof p === "number" && Number.isFinite(p));
+    if (prices.length === 0) return null;
+    return [Math.floor(Math.min(...prices)), Math.ceil(Math.max(...prices))];
 }
 
 function countAndSort(matches, field) {

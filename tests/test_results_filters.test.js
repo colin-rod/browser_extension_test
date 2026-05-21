@@ -68,3 +68,25 @@ test("deriveFilterOptions ignores null/empty/undefined size and brand values", (
     assert.deepEqual(opts.sizes, [{ value: "M", count: 2 }]);
     assert.deepEqual(opts.brands, [{ value: "Acne", count: 2 }]);
 });
+
+test("deriveFilterOptions returns price bounds with floor/ceil rounding", () => {
+    const matches = [
+        { price: 149.5 }, { price: 200 }, { price: 79.99 }, { price: 500.01 },
+    ];
+    const opts = deriveFilterOptions(matches);
+    assert.deepEqual(opts.priceBounds, [79, 501]);
+});
+
+test("deriveFilterOptions price bounds null when no items have price", () => {
+    const matches = [
+        { price: null }, { price: undefined }, {},
+    ];
+    const opts = deriveFilterOptions(matches);
+    assert.equal(opts.priceBounds, null);
+});
+
+test("deriveFilterOptions price bounds equal when all items same price", () => {
+    const matches = [{ price: 100 }, { price: 100 }];
+    const opts = deriveFilterOptions(matches);
+    assert.deepEqual(opts.priceBounds, [100, 100]);
+});
