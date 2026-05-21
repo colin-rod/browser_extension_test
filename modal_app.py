@@ -105,6 +105,54 @@ def embed_catalog(limit: int = 10_000) -> dict:
     }
 
 
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB cap on decoded base64 payload
+
+
+def resolve_query_image(payload: dict, url_loader=None):
+    """Validate a /match payload and return a PIL.Image.
+
+    Exactly one of payload["image_url"] or payload["image_bytes"] must be set.
+    image_bytes is base64-encoded JPEG/PNG, capped at MAX_IMAGE_BYTES.
+    Raises fastapi.HTTPException(400) on any validation or decode error.
+    """
+    import base64
+    from fastapi import HTTPException
+
+    from src.embedding import load_image_from_bytes, load_image_from_url
+
+    image_url = payload.get("image_url")
+    image_bytes_b64 = payload.get("image_bytes")
+
+    has_url = isinstance(image_url, str) and image_url
+    has_bytes = isinstance(image_bytes_b64, str) and image_bytes_b64
+
+    if has_url and has_bytes:
+        raise HTTPException(status_code=400, detail="provide image_url OR image_bytes, not both")
+    if not has_url and not has_bytes:
+        raise HTTPException(status_code=400, detail="image_url or image_bytes is required")
+
+    if has_bytes:
+        try:
+            raw = base64.b64decode(image_bytes_b64, validate=True)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"image_bytes is not valid base64: {e}")
+        if len(raw) > MAX_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"image_bytes exceeds {MAX_IMAGE_BYTES} byte cap",
+            )
+        try:
+            return load_image_from_bytes(raw)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    loader = url_loader or load_image_from_url
+    try:
+        return loader(image_url, timeout=10)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"could not load image: {e}")
+
+
 @app.cls(memory=2048, volumes={CATALOG_DIR: volume}, min_containers=1)
 class MatchService:
     """Loads catalog + model once per container, serves match requests."""
@@ -131,21 +179,13 @@ class MatchService:
     @modal.fastapi_endpoint(method="POST")
     def match(self, payload: dict) -> dict:
         import torch
-        from fastapi import HTTPException
 
-        from src.embedding import embed_images, load_image_from_url
+        from src.embedding import embed_images
         from src.similarity import top_k_matches
         from src.types import Match
 
-        image_url = payload.get("image_url")
-        if not image_url or not isinstance(image_url, str):
-            raise HTTPException(status_code=400, detail="image_url is required")
+        img = resolve_query_image(payload)
         top_k = int(payload.get("top_k", 10))
-
-        try:
-            img = load_image_from_url(image_url, timeout=10)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"could not load image: {e}")
 
         with torch.no_grad():
             query_emb = embed_images(self.model, self.processor, [img]).numpy()[0]
